@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#1a1a2e" />
+  <link rel="manifest" href="manifest.json" />
+  <title>ISA|PAES · Consulta NF-e</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <img src="logo.png" class="logo-img" id="logoBtn" alt="ISA|PAES" title="Voltar ao início" />
+      <div class="brand-co">
+        <strong class="co-nome" id="certNome">Consulta de NF-e · SEFAZ</strong>
+        <span class="co-meta"><span id="certCnpj"></span><span id="certValidade"></span></span>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <span class="badge hidden" id="ambienteBadge">PRODUÇÃO</span>
+      <button id="themeToggle" class="theme-toggle" title="Alternar tema">Tema claro</button>
+      <button class="btn ghost small hidden" id="trocarBtn" title="Entrar com o certificado de outra empresa">Trocar empresa</button>
+      <button class="btn ghost small hidden" id="logoutBtn">Sair</button>
+      <div class="agent-status" id="agentStatus">
+        <span class="dot" id="agentDot"></span>
+        <span id="agentText">Verificando servidor…</span>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <!-- TELA DE LOGIN -->
+    <section id="loginView" class="card hidden">
+      <h2>Conectar certificado</h2>
+      <p class="muted">
+        O certificado é enviado apenas ao agente local na sua máquina e
+        mantido em memória. Nada é gravado em disco ou na nuvem.
+      </p>
+
+      <label class="field">
+        <span>Certificado A1 (.pfx / .p12)</span>
+        <input type="file" id="pfxInput" accept=".pfx,.p12" />
+      </label>
+
+      <label class="field">
+        <span>Senha do certificado</span>
+        <span class="pw-wrap">
+          <input type="password" id="senhaInput" placeholder="••••••••" autocomplete="off" />
+          <button type="button" class="pw-eye" data-target="senhaInput" title="Mostrar/ocultar senha">👁</button>
+        </span>
+      </label>
+
+      <div class="row">
+        <label class="field half">
+          <span>Ambiente</span>
+          <select id="ambienteInput">
+            <option value="producao">Produção</option>
+            <option value="homologacao">Homologação</option>
+          </select>
+        </label>
+        <label class="field half">
+          <span>UF (código IBGE)</span>
+          <select id="ufInput">
+            <option value="31" selected>MG (31)</option>
+            <option value="35">SP (35)</option>
+            <option value="33">RJ (33)</option>
+            <option value="41">PR (41)</option>
+            <option value="43">RS (43)</option>
+            <option value="42">SC (42)</option>
+            <option value="29">BA (29)</option>
+            <option value="53">DF (53)</option>
+          </select>
+        </label>
+      </div>
+
+      <button class="btn primary" id="loginBtn">Conectar</button>
+      <button class="btn ghost hidden" id="voltarBtn">← Voltar sem trocar</button>
+      <p class="error hidden" id="loginError"></p>
+    </section>
+
+    <!-- TELA PRINCIPAL -->
+    <section id="mainView" class="hidden">
+      <div class="view-switch">
+        <button class="vs-btn active" data-view="notas">Notas</button>
+        <button class="vs-btn" data-view="dashboard">Dashboard</button>
+      </div>
+
+      <div id="notasView">
+      <div class="toolbar">
+        <div class="poll-info">
+          <span id="ultimaConsulta" class="muted">Sem consulta ainda</span>
+          <span id="proximaConsulta" class="muted"></span>
+        </div>
+        <div class="toolbar-actions">
+          <input type="search" id="filtroInput" placeholder="Filtrar por emitente, CNPJ ou chave…" />
+          <button class="btn primary small" id="consultarBtn">Consultar agora</button>
+        </div>
+      </div>
+
+      <div class="date-filter">
+        <label>De <input type="date" id="dataDe" /></label>
+        <label>Até <input type="date" id="dataAte" /></label>
+        <select id="grupoFiltro" title="Filtrar por grupo">
+          <option value="">Todos os grupos</option>
+        </select>
+        <select id="destFiltro" title="Filtrar por estabelecimento destinatário">
+          <option value="">Todos os destinatários</option>
+          <option value="14485211000176">Fábrica (14.485.211/0001-76)</option>
+          <option value="14485211000257">Showroom (14.485.211/0002-57)</option>
+          <option value="__sem__">Não identificado</option>
+        </select>
+        <select id="opFiltro" title="Filtrar por tipo de operação">
+          <option value="">Todas as operações</option>
+        </select>
+        <button class="btn ghost small" id="limparDatas">Limpar</button>
+        <button class="btn ghost small" id="gerenciarGrupos">Gerenciar grupos</button>
+      </div>
+
+      <div class="card grupos-panel hidden" id="gruposPanel">
+        <strong>Grupos de fornecedores</strong>
+        <div id="gruposLista" class="grupos-lista"></div>
+        <div class="grupo-add">
+          <input type="text" id="novoGrupo" placeholder="Novo grupo (ex: Embalagens)" />
+          <button class="btn primary small" id="addGrupoBtn">Adicionar grupo</button>
+        </div>
+        <hr class="sep" />
+        <strong>Subgrupos (vinculados a um grupo)</strong>
+        <div id="subgruposLista" class="grupos-lista"></div>
+        <div class="grupo-add">
+          <select id="subgrupoGrupoSel"></select>
+          <input type="text" id="novoSubgrupo" placeholder="Novo subgrupo (ex: Bordado)" />
+          <button class="btn primary small" id="addSubgrupoBtn">Adicionar subgrupo</button>
+        </div>
+      </div>
+
+      <div class="stats" id="stats"></div>
+
+      <div class="card resumo" id="resumoCard">
+        <div class="resumo-tabs">
+          <button class="resumo-tab active" data-tab="grupo">Total por grupo</button>
+          <button class="resumo-tab" data-tab="fornecedor">Total por fornecedor</button>
+        </div>
+        <div id="resumoConteudo"></div>
+      </div>
+
+      <div class="table-wrap">
+        <table id="tabela">
+          <thead>
+            <tr>
+              <th>Emitente</th>
+              <th>CNPJ</th>
+              <th>Grupo</th>
+              <th class="num">Valor</th>
+              <th>Emissão</th>
+              <th>Situação</th>
+              <th>Ações</th>
+              <th>Chave</th>
+            </tr>
+          </thead>
+          <tbody id="tbody"></tbody>
+        </table>
+        <p class="empty hidden" id="vazio">Nenhum documento ainda. As notas aparecem aqui após a primeira consulta.</p>
+      </div>
+
+      <div class="paginacao" id="paginacao"></div>
+      </div><!-- /notasView -->
+
+      <div id="dashboardView" class="hidden">
+        <div class="dash-period">
+          <label>De <input type="date" id="dashDe" /></label>
+          <label>Até <input type="date" id="dashAte" /></label>
+          <button class="btn ghost small" id="dashLimpar">Período todo</button>
+        </div>
+        <div class="dash-cards" id="dashCards"></div>
+        <div class="dash-grid">
+          <div class="card dash-chart">
+            <strong>Compras por grupo <span class="muted" style="font-weight:400;font-size:0.78rem">(clique para filtrar)</span></strong>
+            <div id="chartGrupo"></div>
+          </div>
+          <div class="card dash-chart">
+            <strong id="rankTitulo">Ranking de fornecedores</strong>
+            <div id="chartFornecedor"></div>
+          </div>
+        </div>
+        <div class="card dash-chart">
+          <strong>Compras por mês</strong>
+          <div id="chartMes"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- AGENTE OFFLINE -->
+    <section id="offlineView" class="card hidden">
+      <h2>Servidor não encontrado</h2>
+      <p class="muted">
+        O PWA precisa do agente <code>isapaes-nfe-agent</code> rodando (ele fala com a
+        SEFAZ usando o certificado). Em rede, aponte para o IP da máquina-servidor.
+      </p>
+      <ol class="steps">
+        <li>Abra o agente (<code>npm start</code>, ou <code>iniciar-servidor.bat</code> no servidor).</li>
+        <li>Endereço do agente:
+          <div class="serv-config">
+            <input type="text" id="agenteUrl" placeholder="http://localhost:7890" />
+            <span class="pw-wrap">
+              <input type="password" id="agenteToken" placeholder="Senha de acesso (se houver)" />
+              <button type="button" class="pw-eye" data-target="agenteToken" title="Mostrar/ocultar senha">👁</button>
+            </span>
+            <button class="btn primary small" id="salvarAgente">Salvar e conectar</button>
+          </div>
+          <span class="muted" style="font-size:0.8rem">No servidor, deixe <code>http://localhost:7890</code>. Em outro PC/VPN, use <code>http://IP-DO-SERVIDOR:7890</code> e a senha de acesso (se tiver configurado).</span>
+          <p id="servStatus" class="serv-status"></p>
+        </li>
+        <li>Ou clique em <button class="btn ghost small" id="retryBtn">Tentar de novo</button>.</li>
+      </ol>
+    </section>
+  </main>
+
+  <div id="toast" class="toast hidden"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
